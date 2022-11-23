@@ -16,6 +16,7 @@
 namespace OpenEMR\Common\Twig;
 
 use OpenEMR\Common\Csrf\CsrfUtils;
+use OpenEMR\Common\Utils\CacheUtils;
 use OpenEMR\Core\Header;
 use OpenEMR\Core\Kernel;
 use OpenEMR\OeUI\OemrUI;
@@ -217,6 +218,12 @@ class TwigExtension extends AbstractExtension implements GlobalsInterface
                 }
             ),
             new TwigFilter(
+                'javascriptStringRemove',
+                function ($string) {
+                    return javascriptStringRemove($string);
+                }
+            ),
+            new TwigFilter(
                 'xl',
                 function ($string) {
                     return xl($string);
@@ -277,6 +284,12 @@ class TwigExtension extends AbstractExtension implements GlobalsInterface
                 'dateToTime',
                 function ($str) {
                     return strtotime($str);
+                }
+            ),
+            new TwigFilter(
+                'addCacheParam',
+                function ($path) {
+                    return CacheUtils::addAssetCacheParamToPath($path);
                 }
             )
         ];

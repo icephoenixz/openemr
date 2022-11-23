@@ -153,6 +153,7 @@ CREATE TABLE `audit_master` (
   `ip_address` varchar(100) NOT NULL,
   `type` tinyint(4) NOT NULL COMMENT '1-new patient,2-existing patient,3-change is only in the document,4-Patient upload,5-random key,10-Appointment',
   `is_qrda_document` BOOLEAN NULL DEFAULT FALSE,
+  `is_unstructured_document` BOOLEAN NULL DEFAULT FALSE,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
 
@@ -167,7 +168,7 @@ CREATE TABLE `audit_details` (
   `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `table_name` VARCHAR(100) NOT NULL COMMENT 'openemr table name',
   `field_name` VARCHAR(100) NOT NULL COMMENT 'openemr table''s field name',
-  `field_value` TEXT COMMENT 'openemr table''s field value',
+  `field_value` LONGTEXT COMMENT 'openemr table''s field value',
   `audit_master_id` BIGINT(20) NOT NULL COMMENT 'Id of the audit_master table',
   `entry_identification` VARCHAR(255) NOT NULL DEFAULT '1' COMMENT 'Used when multiple entry occurs from the same table.1 means no multiple entry',
   PRIMARY KEY (`id`),
@@ -201,7 +202,7 @@ CREATE TABLE `background_services` (
 --
 
 INSERT INTO `background_services` (`name`, `title`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
-('phimail', 'phiMail Direct Messaging Service', 5, 'phimail_check', '/library/direct_message_check.inc', 100);
+('phimail', 'phiMail Direct Messaging Service', 5, 'phimail_check', '/library/direct_message_check.inc.php', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
 ('MedEx', 'MedEx Messaging Service', 0, 0, '2017-05-09 17:39:10', 0, 'start_MedEx', '/library/MedEx/MedEx_background.php', 100);
 INSERT INTO `background_services` (`name`, `title`, `active`, `running`, `next_run`, `execute_interval`, `function`, `require_once`, `sort_order`) VALUES
@@ -298,13 +299,13 @@ CREATE TABLE `categories` (
 INSERT INTO `categories` VALUES (1, 'Categories', '', 0, 0, 59, 'patients|docs', '');
 INSERT INTO `categories` VALUES (2, 'Lab Report', '', 1, 1, 2, 'patients|docs', '');
 INSERT INTO `categories` VALUES (3, 'Medical Record', '', 1, 3, 4, 'patients|docs', '');
-INSERT INTO `categories` VALUES (4, 'Patient Information', '', 1, 5, 10, 'patients|docs', '');
-INSERT INTO `categories` VALUES (5, 'Patient ID card', '', 4, 6, 7, 'patients|docs', '');
+INSERT INTO `categories` VALUES (4, 'Patient Information', '', 1, 5, 10, 'patients|demo', '');
+INSERT INTO `categories` VALUES (5, 'Patient ID card', '', 4, 6, 7, 'patients|demo', '');
 INSERT INTO `categories` VALUES (6, 'Advance Directive', '', 1, 11, 18, 'patients|docs','LOINC:LP173418-7');
 INSERT INTO `categories` VALUES (7, 'Do Not Resuscitate Order', '', 6, 12, 13, 'patients|docs', '');
 INSERT INTO `categories` VALUES (8, 'Durable Power of Attorney', '', 6, 14, 15, 'patients|docs', '');
 INSERT INTO `categories` VALUES (9, 'Living Will', '', 6, 16, 17, 'patients|docs', '');
-INSERT INTO `categories` VALUES (10, 'Patient Photograph', '', 4, 8, 9, 'patients|docs', '');
+INSERT INTO `categories` VALUES (10, 'Patient Photograph', '', 4, 8, 9, 'patients|demo', '');
 INSERT INTO `categories` VALUES (11, 'CCR', '', 1, 19, 20, 'patients|docs', '');
 INSERT INTO `categories` VALUES (12, 'CCD', '', 1, 21, 22, 'patients|docs', 'LOINC:34133-9');
 INSERT INTO `categories` VALUES (13, 'CCDA', '', 1, 23, 24, 'patients|docs', '');
@@ -1883,6 +1884,7 @@ CREATE TABLE `form_encounter` (
   `encounter_type_description` TEXT,
   `referring_provider_id` INT(11) DEFAULT '0' COMMENT 'referring provider, if any, for this visit',
   `date_end` DATETIME DEFAULT NULL,
+  `in_collection` tinyint(1) default NULL,
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`),
   KEY `pid_encounter` (`pid`, `encounter`),
@@ -3384,6 +3386,7 @@ CREATE TABLE `layout_group_properties` (
   grp_save_close  tinyint(1)     not null default 0,
   grp_init_open   tinyint(1)     not null default 0,
   grp_referrals   tinyint(1)     not null default 0,
+  grp_unchecked   tinyint(1)     not null default 0,
   grp_services    varchar(4095)  not null default '',
   grp_products    varchar(4095)  not null default '',
   grp_diags       varchar(4095)  not null default '',
@@ -11169,6 +11172,7 @@ INSERT INTO list_options (`list_id`, `option_id`, `title`, `seq`, `is_default`, 
 
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('lists','Document_Template_Categories','Document Template Categories',0,1,0,'',NULL,'',0,0,1);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('Document_Template_Categories','repository','Repository',1,1,0,'','','',0,0,1);
+INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`) VALUES ('Document_Template_Categories','questionnaire','Questionnaires',10,0,0,'','','',0,0,1);
 
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`) VALUES ('lists','Clinical_Note_Type','Clinical Note Type',0,1,0,'',NULL,'',0,0,1,'',1);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`) VALUES ('Clinical_Note_Type','evaluation_note','Evaluation Note',5,0,0,'','LOINC:51848-0','',0,0,1,'',1);
@@ -11610,7 +11614,7 @@ CREATE TABLE ccda (
   `uuid` binary(16) DEFAULT NULL,
   pid BIGINT(20) DEFAULT NULL,
   encounter BIGINT(20) DEFAULT NULL,
-  ccda_data MEDIUMTEXT,
+  ccda_data LONGTEXT,
   time VARCHAR(50) DEFAULT NULL,
   status SMALLINT(6) DEFAULT NULL,
   updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -13185,14 +13189,16 @@ DROP TABLE IF EXISTS `questionnaire_response`;
 CREATE TABLE `questionnaire_response` (
   `id` bigint(21) NOT NULL AUTO_INCREMENT,
   `uuid` binary(16) DEFAULT NULL,
+  `response_id` varchar(255) DEFAULT NULL COMMENT 'A globally unique id for answer set. String version of UUID',
   `questionnaire_foreign_id` bigint(21) DEFAULT NULL COMMENT 'questionnaire_repository id for subject questionnaire',
-  `questionnaire_id` varchar(255) DEFAULT NULL,
+  `questionnaire_id` varchar(255) DEFAULT NULL COMMENT 'Id for questionnaire content. String version of UUID',
   `questionnaire_name` varchar(255) DEFAULT NULL,
+  `patient_id` int(11) DEFAULT NULL,
+  `encounter` int(11) DEFAULT NULL COMMENT 'May or may not be associated with an encounter',
   `audit_user_id` int(11) DEFAULT NULL,
   `creator_user_id` int(11) DEFAULT NULL COMMENT 'user id if answers are provider',
   `create_time` datetime DEFAULT current_timestamp(),
   `last_updated` datetime DEFAULT NULL,
-  `patient_id` int(11) DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
   `status` varchar(63) DEFAULT NULL COMMENT 'form current status. completed,active,incomplete',
   `questionnaire` longtext COMMENT 'the subject questionnaire json',
@@ -13203,14 +13209,14 @@ CREATE TABLE `questionnaire_response` (
   `error` double DEFAULT NULL COMMENT 'Standard error for the T-Score',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uuid` (`uuid`),
-  KEY `questionnaire_foreign_id` (`questionnaire_foreign_id`,`questionnaire_id`,`questionnaire_name`)
+  KEY `response_index` (`response_id`, `patient_id`, `questionnaire_id`, `questionnaire_name`)
 ) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS `form_questionnaire_assessments`;
 CREATE TABLE `form_questionnaire_assessments` (
   `id` bigint(21) NOT NULL AUTO_INCREMENT,
   `date` datetime DEFAULT current_timestamp(),
-  `last_date` datetime DEFAULT NULL,
+  `response_id` TEXT COMMENT 'The foreign id to the questionnaire_response repository',
   `pid` bigint(21) NOT NULL DEFAULT 0,
   `user` bigint(21) DEFAULT NULL,
   `groupname` varchar(255) DEFAULT NULL,
@@ -13218,8 +13224,8 @@ CREATE TABLE `form_questionnaire_assessments` (
   `activity` tinyint(4) NOT NULL DEFAULT 1,
   `copyright` text,
   `form_name` varchar(255) DEFAULT NULL,
-  `code` varchar(31) DEFAULT NULL,
-  `code_type` varchar(31) DEFAULT "LOINC",
+  `response_meta` text COMMENT 'json meta data for the response resource',
+  `questionnaire_id` TEXT COMMENT 'The foreign id to the questionnaire_repository',
   `questionnaire` longtext,
   `questionnaire_response` longtext,
   `lform` longtext,
