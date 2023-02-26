@@ -1508,6 +1508,13 @@ $GLOBALS_METADATA = array(
             xl('For automatically sending claims that are generated in EDI directory to the X12 partner using SFTP credentials X12 Partner Settings')
         ),
 
+        'enable_swap_secondary_insurance' => array(
+            xl('Enable Swap Secondary Insurance Editing Demographics'),
+            'bool',                           // data type
+            '0',                              // default
+            xl('Enable swap secondary insurance')
+        ),
+
     ),
 
     // E-Sign Tab
@@ -4163,11 +4170,18 @@ $GLOBALS_METADATA = array(
         ),
 
         'set_pos_code_encounter' => [
-            xl('Set POS code in encounter'),
+            xl('Set POS code in Encounter'),
             'bool',                           // data type
             '0',                              // default = false
             xl('This feature will allow the default POS facility code to be overridden from the encounter.')
         ],
+
+        'set_service_facility_encounter' => array(
+            xl('Set Service Facility in Encounter'),
+            'bool',                           // data type
+            '0',                              // default = false
+            xl('This feature will allow the default service facility to be selected by the care team facility in Choices.')
+        ),
 
         'enc_service_date' => [
             xl('Show Date of Service on Encounter Form'),

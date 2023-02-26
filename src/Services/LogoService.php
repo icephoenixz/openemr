@@ -65,14 +65,23 @@ class LogoService
     public function getLogo(string $type): string
     {
         $siteDir = "{$GLOBALS['OE_SITE_DIR']}/images/logos/{$type}/";
-        $paths[] = "{$GLOBALS['images_static_absolute']}/logos/{$type}/";
+        $publicDir = "{$GLOBALS['images_static_absolute']}/logos/{$type}/";
+        $paths = [];
 
-        if ($this->fs->exists($siteDir)) {
-            // Only look in sites if the sites structure exists, ensures upgrades continue to work
-            array_unshift($paths, $siteDir);
+        if ($this->fs->exists($publicDir)) {
+            $paths[] = $publicDir;
         }
 
-        $logo = $this->findLogo($paths);
+        if ($this->fs->exists($siteDir)) {
+            $paths[] = $siteDir;
+        }
+
+        try {
+            $logo = $this->findLogo($paths);
+        } catch (\Exception $e) {
+            error_log($e->getMessage());
+            $logo = "";
+        }
 
         // This is critical, the finder must be completely reinstantiated to ensure the proper directories are searched next time.
         $this->resetFinder();
@@ -95,7 +104,18 @@ class LogoService
         return str_replace(array_keys($paths), array_values($paths), $path);
     }
 
-    private function findLogo(array $directory, string $filename = 'logo.*'): string|null
+    /**
+     * Search in the given directories for a filename
+     *
+     * By default, will search in the directory array for any file named "logo" (extension agnostic). If found, only
+     * the last file found will be returned. By default, will append a query string for time modified to cache bust.
+     *
+     * @param array $directory Array of directories to search
+     * @param string $filename File to look for
+     * @param boolean $timestamp Will return with a query string of the last modified time
+     * @return string|null String of real path or null if no file found
+     */
+    private function findLogo(array $directory, string $filename = 'logo.*', $timestamp = true): string
     {
         $this->finder->files()->in($directory)->name($filename);
 
@@ -103,9 +123,10 @@ class LogoService
             // There is at least 1 file in the sites directory for the given logo
             foreach ($this->finder as $f) {
                 $return = $f->getRealPath();
+                $return = ($timestamp) ? $return . "?t=" . $f->getMTime() : $return;
             }
         } else {
-            $return = null;
+            $return = "";
         }
 
         return $return;
