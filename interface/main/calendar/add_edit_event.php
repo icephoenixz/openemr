@@ -209,7 +209,7 @@ function DOBandEncounter($pc_eid)
 {
      global $event_date,$info_msg;
      // Save new DOB if it's there.
-     $patient_dob = trim($_POST['form_dob'] ?? null);
+     $patient_dob = trim($_POST['form_dob'] ?? '');
      $tmph = $_POST['form_hour'] + 0;
      $tmpm = $_POST['form_minute'] + 0;
     if (!empty($_POST['form_ampm']) && ($_POST['form_ampm'] == '2' && $tmph < 12)) {
@@ -1084,6 +1084,11 @@ function setpatient(pid, lname, fname, dob) {
     f.form_pid.value = pid;
     dobstyle = (dob == '' || dob.substr(5, 10) == '00-00') ? '' : 'none';
     document.getElementById('dob_row').style.display = dobstyle;
+    let event = new CustomEvent('openemr:appointment:patient:set', {
+        bubbles: true
+        ,detail: {form: f, pid: pid, lname: lname, fname: fname, dob: dob}
+    });
+    f.dispatchEvent(event);
 }
 
 // This invokes the find-patient popup.
@@ -1500,7 +1505,7 @@ if (empty($_GET['prov']) && empty($_GET['group'])) { ?>
     // DOB is important for the clinic, so if it's missing give them a chance
     // to enter it right here.  We must display or hide this row dynamically
     // in case the patient-select popup is used.
-    $patient_dob = trim($prow['DOB'] ?? null);
+    $patient_dob = trim($prow['DOB'] ?? '');
     $is_group = $groupname;
     $dobstyle = (!empty($prow) && (!$patient_dob || substr($patient_dob, 5) == '00-00') && !$is_group) ?
         '' : 'none';
