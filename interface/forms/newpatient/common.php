@@ -34,8 +34,7 @@ if ($GLOBALS['enable_group_therapy']) {
 }
 
 $months = array("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12");
-$days = array("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14",
-    "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31");
+$days = array("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31");
 $thisyear = date("Y");
 $years = array($thisyear - 1, $thisyear, $thisyear + 1, $thisyear + 2);
 
@@ -586,8 +585,9 @@ $ires = sqlStatement("SELECT id, type, title, begdate FROM lists WHERE " .
                                         if ((int)$provider_id === $p_id) {
                                             echo "selected";
                                         }
-                                        echo ">" . text($activeUser['lname']) . ' ' .
-                                            text($activeUser['fname']) . ' ' . text($activeUser['mname']) . $flag_it . "</option>\n";
+                                        echo ">" . text($activeUser['lname']) . ', ' . text($activeUser['suffix']) . ', ' .
+                                            text($activeUser['valedictory']) . ', ' . text($activeUser['fname']) . ', ' .
+                                            text($activeUser['mname']) . $flag_it . "</option>\n";
                                     }
                                     ?>
                                 </select>

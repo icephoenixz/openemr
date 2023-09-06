@@ -140,6 +140,14 @@ if (isset($_POST["privatemode"]) && $_POST["privatemode"] == "user_admin") {
             sqlStatement("update users set lname=? where id= ? ", array($_POST["lname"], $_POST["id"]));
         }
 
+        if ($_POST["suffix"]) {
+            sqlStatement("update users set suffix=? where id= ? ", array($_POST["suffix"], $_POST["id"]));
+        }
+
+        if ($_POST["valedictory"]) {
+            sqlStatement("update users set valedictory=? where id= ? ", array($_POST["valedictory"], $_POST["id"]));
+        }
+
         if ($_POST["job"]) {
             sqlStatement("update users set specialty=? where id= ? ", array($_POST["job"], $_POST["id"]));
         }
@@ -348,6 +356,8 @@ if (isset($_POST["mode"])) {
             "', fname = '"         . add_escape_custom(trim((isset($_POST['fname']) ? $_POST['fname'] : ''))) .
             "', mname = '"         . add_escape_custom(trim((isset($_POST['mname']) ? $_POST['mname'] : ''))) .
             "', lname = '"         . add_escape_custom(trim((isset($_POST['lname']) ? $_POST['lname'] : ''))) .
+            "', suffix = '"         . add_escape_custom(trim((isset($_POST['suffix']) ? $_POST['suffix'] : ''))) .
+            "', valedictory = '"         . add_escape_custom(trim((isset($_POST['valedictory']) ? $_POST['valedictory'] : ''))) .
             "', federaltaxid = '"  . add_escape_custom(trim((isset($_POST['federaltaxid']) ? $_POST['federaltaxid'] : ''))) .
             "', state_license_number = '"  . add_escape_custom(trim((isset($_POST['state_license_number']) ? $_POST['state_license_number'] : ''))) .
             "', newcrop_user_role = '"  . add_escape_custom(trim((isset($_POST['erxrole']) ? $_POST['erxrole'] : ''))) .
@@ -559,6 +569,21 @@ function authorized_clicked() {
  f.calendar.checked  =  f.authorized.checked;
 }
 
+function resetCounter(username) {
+    top.restoreSession();
+    request = new FormData;
+    request.append("function", "resetUsernameCounter");
+    request.append("username", username);
+    request.append("csrf_token_form", <?php echo js_escape(CsrfUtils::collectCsrfToken('counter')); ?>);
+    fetch("<?php echo $GLOBALS["webroot"]; ?>/library/ajax/login_counter_ip_tracker.php", {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: request
+    });
+    let loginCounterElement = document.getElementById('login-counter-' + username);
+    loginCounterElement.innerHTML = "0";
+}
+
 </script>
 
 </head>
@@ -618,6 +643,7 @@ function authorized_clicked() {
                                 echo '<th>' . xlt('Password Expiration') . '</th>';
                             }
                             ?>
+                            <th><?php echo xlt('Failed Login Counter'); ?></th>
                         </tr>
                     <tbody>
                         <?php
@@ -687,6 +713,41 @@ function authorized_clicked() {
                                 }
                                 echo '</td>';
                             }
+                            if (empty($iter["active"])) {
+                                echo '<td>';
+                                echo xlt('Not Applicable');
+                            } else {
+                                echo '<td id="login-counter-' . attr($iter["username"]) .  '">';
+                                $queryCounter = privQuery("SELECT `login_fail_counter`, `last_login_fail`, TIMESTAMPDIFF(SECOND, `last_login_fail`, NOW()) as `seconds_last_login_fail` FROM `users_secure` WHERE BINARY `username` = ?", [$iter["username"]]);
+                                if (!empty($queryCounter['login_fail_counter'])) {
+                                    echo text($queryCounter['login_fail_counter']);
+                                    if (!empty($queryCounter['last_login_fail'])) {
+                                        echo ' (' . xlt('last on') . ' ' . text(oeFormatDateTime($queryCounter['last_login_fail'])) . ')';
+                                    }
+                                    echo ' ' . '<button type="button" class="btn btn-sm btn-danger ml-1" onclick="resetCounter(' . attr_js($iter["username"]) . ')">' . xlt("Reset Counter") . '</button>';
+                                    $autoBlocked = false;
+                                    $autoBlockEnd = null;
+                                    if ((int)$GLOBALS['password_max_failed_logins'] != 0 && ($queryCounter['login_fail_counter'] > (int)$GLOBALS['password_max_failed_logins'])) {
+                                        if ((int)$GLOBALS['time_reset_password_max_failed_logins'] != 0) {
+                                            if ($queryCounter['seconds_last_login_fail'] < (int)$GLOBALS['time_reset_password_max_failed_logins']) {
+                                                $autoBlocked = true;
+                                                $autoBlockEnd = date('Y-m-d H:i:s', (time() + ((int)$GLOBALS['time_reset_password_max_failed_logins'] - $queryCounter['seconds_last_login_fail'])));
+                                            }
+                                        } else {
+                                            $autoBlocked = true;
+                                        }
+                                    }
+                                    if ($autoBlocked) {
+                                        echo '<br>' . xlt("Currently Autoblocked");
+                                        if (!empty($autoBlockEnd)) {
+                                            echo ' (' . xlt("Autoblock ends on") . ' ' . text(oeFormatDateTime($autoBlockEnd)) . ')';
+                                        }
+                                    }
+                                } else {
+                                    echo '0';
+                                }
+                            }
+                            echo '</td>';
                             print "</tr>\n";
                         }
                         ?>
