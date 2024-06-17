@@ -325,6 +325,10 @@ class PatientService extends BaseService
             $record['patient_history_uuid'] = UuidRegistry::uuidToString($record['patient_history_uuid']);
         }
 
+        if (!empty($record['provider_uuid'])) {
+            $record['provider_uuid'] = UuidRegistry::uuidToString($record['provider_uuid']);
+        }
+
         return $record;
     }
 
@@ -388,6 +392,7 @@ class PatientService extends BaseService
                     ,previous_name_suffix
                     ,previous_name_enddate
                     ,patient_additional_addresses.*
+                    ,provider_uuid
         ";
         $sql = "
                 FROM patient_data
@@ -406,6 +411,12 @@ class PatientService extends BaseService
                     ,uuid AS patient_history_uuid
                     FROM patient_history
                 ) patient_history ON patient_data.pid = patient_history.patient_history_pid
+                LEFT JOIN (
+                    select
+                        id AS provider_id
+                        ,uuid AS provider_uuid
+                    FROM users
+                ) provider ON patient_data.providerID = provider.provider_id
                 LEFT JOIN (
                     SELECT
                         contact.id AS contact_address_contact_id
@@ -1020,9 +1031,6 @@ class PatientService extends BaseService
         $query = "SELECT option_id FROM list_options WHERE list_id = 'recent_patient_columns' and activity = '1'";
         $res = sqlStatement($query);
         $cols = ['pid'];
-        while ($row = sqlFetchArray($res)) {
-            $cols[] = $row['option_id'];
-        }
 
         // Trim down the incoming patient array to just the whitelisted columns
         foreach ($patient as $k => $v) {
@@ -1058,6 +1066,13 @@ class PatientService extends BaseService
         $currUser = ($user_id > 0) ? ['id' => $user_id] : $user->getCurrentlyLoggedInUser();
         $sql = "SELECT patients FROM recent_patients WHERE user_id = ?";
         $res = sqlQuery($sql, [$currUser['id']]);
-        return ($res) ? unserialize($res['patients']) : [];
+        // original code:  return ($res) ? unserialize($res['patients']) : [];
+        // We only want the pid value so we can fetch the data from patient_data...
+        //
+        $pids = [];
+        foreach (($res) ? unserialize($res['patients']) : [] as $k => $v) {
+            $pids[]['pid'] = $v['pid'];
+        }
+        return($pids);
     }
 }

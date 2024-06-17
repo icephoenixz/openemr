@@ -106,6 +106,14 @@ if (!empty($_GET['attachid'])) {
 }
 ?>
 
+
+<?php
+// If google sign-in enable then add scripts.
+if (!empty($GLOBALS['google_signin_enabled']) && !empty($GLOBALS['google_signin_client_id'])) {?>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="<?php echo $GLOBALS['web_root']?>/library/js/gSignIn.js"></script>
+<?php } ?>
+
 <script>
 $(function () {
     var formConfig = <?php echo $esignApi->formConfigToJson(); ?>;
@@ -534,7 +542,7 @@ $eventDispatcher->addListener(EncounterMenuEvent::MENU_RENDER, function (Encount
             }
         }
 
-        $_cat = trim($item['category']);
+        $_cat = trim($item['category'] ?? '');
         $_cat = ($_cat == '') ? xl("Miscellaneous") : xl($_cat);
         $item['displayText'] = (trim($item['nickname'] ?? '') != '') ? trim($item['nickname'] ?? '') : trim($item['name'] ?? '');
         unset($item['category']);
@@ -880,8 +888,12 @@ if (
 
         // Figure out the correct author (encounter authors are the '$providerNameRes', while other
         // form authors are the '$user['fname'] . "  " . $user['lname']').
-        $form_author = ($formdir == 'newpatient') ? $providerNameRes : ($user['fname'] ?? '') . "  " .
-            ($user['lname'] ?? '') . ", " . ($user['suffix'] ?? '') . ", " . ($user['valedictory'] ?? '');
+        $form_author = ($formdir == 'newpatient') ? $providerNameRes :
+            ($user['fname'] ?? '') . " " .
+            (($user['mname'] ?? '') ? $user['mname'] . " " : " ") .
+            ($user['lname'] ?? '') .
+            (($user['suffix'] ?? '') ? ", " . $user['suffix'] : '') .
+            (($user['valedictory'] ?? '') ? ", " . ($user['valedictory']) : '');
         $div_nums_attr = attr($divnos);
         $title = xla("Expand/Collapse this form");
         $display = text($form_name) . " " . xlt("by") . " " . text($form_author);

@@ -155,8 +155,8 @@ $USER_SPECIFIC_GLOBALS = array('default_top_pane',
     'checkout_roll_off',
     'patient_birthday_alert',
     'patient_birthday_alert_manual_off',
-    'erx_import_status_message',
-    'weno_provider_password');
+    'erx_import_status_message'
+);
 
 // Gets array of time zones supported by PHP.
 //
@@ -191,7 +191,12 @@ $GLOBALS_METADATA = array(
             'style_light.css',
             xl('Pick a general theme (need to logout/login after changing this setting).')
         ),
-
+        'hide_dashboard_cards' => array(
+            xl('Hide selected cards on patient dashboard'),
+            'm_dashboard_cards',
+            '',
+            xl('Multi (Shift or CTRL) Select the cards you want to hide on the patient dashboard.')
+        ),
         'window_title_add_patient_name' => array(
             xl('Add Patient Name To Window Title'),
             'bool',                           // data type
@@ -1529,6 +1534,13 @@ $GLOBALS_METADATA = array(
             xl('Enable swap secondary insurance')
         ),
 
+        'add_unmatched_code_from_ins_co_era_to_billing' => array(
+            xl('Enable adding unmatched code from insurance company to billing table'),
+            'bool',                           // data type
+            '0',                              // default
+            xl('Enable adding unmatched code from insurance company to billing table')
+        ),
+
     ),
 
     // E-Sign Tab
@@ -2010,11 +2022,11 @@ $GLOBALS_METADATA = array(
     ),
     // Insurance Tab
     'Insurance' => array(
-        'enable_oa' => array(
-            xl('Enable Office Ally Insurance Eligibility'),
+        'enable_eligibility_requests' => array(
+            xl('Enable Insurance Eligibility'),
             'bool',
             '0',
-            xl('Allow insurance eligibility checks using Office Ally')
+            xl('Allow insurance eligibility checks using an X12 Partner')
         ),
 
         'simplified_demographics' => array(
@@ -3495,34 +3507,6 @@ $GLOBALS_METADATA = array(
             xl('Log all NewCrop eRx Requests and / or Responses.'),
         ),
 
-        'weno_rx_enable' => array(
-            xl('Enable Weno eRx Service'),
-            'bool',
-            '0',
-            xl('Enable Weno eRx Service') . ' ' . xl('Contact https://online.wenoexchange.com to sign up for Weno Free eRx service.')
-        ),
-
-        'weno_rx_enable_test' => array(
-            xl('Enable Weno eRx Service Test mode'),
-            'bool',
-            '1',
-            xl('Enable Weno eRx Service Test mode')
-        ),
-
-        'weno_encryption_key' => array(
-            xl('Weno Encryption Key'),
-            'encrypted',                      // data type
-            '',
-            xl('Encryption key issued by Weno eRx service.')
-        ),
-
-        'weno_provider_password' => array(
-            xl('Weno Provider Account Password'),
-            'encrypted',                      // data type
-            '',
-            xl('Each provider needs to set this under user settings. This should be blank')
-        ),
-
         'ccda_alt_service_enable' => array(
             xl('Enable C-CDA Service'),
             array(
@@ -4077,6 +4061,14 @@ $GLOBALS_METADATA = array(
             'LETTER',
             xl('Choose Paper Size')
         ),
+
+        'pdf_font_size' => array(
+            xl('PDF Font Size in Pt'),
+            'num',
+            '10',
+            xl('Sets the font size for most PDF text in pt')
+        ),
+
         'pdf_left_margin' => array(
             xl('Left Margin (mm)'),
             'num',
@@ -4166,7 +4158,7 @@ $GLOBALS_METADATA = array(
         ),
 
         'env_font_size' => array(
-            xl('Font Size in Pt'),
+            xl('Envelope Font Size in Pt'),
             'num',                           // data type
             '14',
             xl('Sets the font of the address text on the envelope in mm')
@@ -4265,6 +4257,13 @@ $GLOBALS_METADATA = array(
             xl('How to display the sensitivity option'),
         ],
 
+        'enc_in_collection' => [
+            xl('Show In Collection on Encounter Form'),
+            getDefaultRenderListOptions(),
+            RenderFormFieldHelper::SHOW_ALL,
+            xl("How to display the 'In Collection' option. May be overriden by Hide Billing Widget setting"),
+        ],
+
         'enc_enable_issues' => [
             xl('Allow Linking/Adding Issues on Encounter'),
             getDefaultRenderListOptions(),
@@ -4314,6 +4313,12 @@ $GLOBALS_METADATA = array(
             xl('Show Encounter Class option on Encounters'),
         ],
 
+        'enc_enable_ordering_provider' => [
+            xl('Show Ordering Provider option on Encounters'),
+            getDefaultRenderListOptions(),
+            RenderFormFieldHelper::HIDE_ALL,
+            xl('Display the Ordering Provider option on Encounters'),
+        ],
     ],
 );
 

@@ -30,6 +30,7 @@ use OpenEMR\Billing\SLEOB;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
+use OpenEMR\Common\Utils\FormatMoney;
 use OpenEMR\Core\Header;
 
 if (!empty($_POST)) {
@@ -79,6 +80,7 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
         $form_cb_referrer = false;
         $form_cb_idays    = false;
         $form_cb_err      = false;
+        $form_cb_group_number = false;
     } else {
         $form_cb_ssn      = (!empty($_POST['form_cb_ssn']))      ? true : false;
         $form_cb_dob      = (!empty($_POST['form_cb_dob']))      ? true : false;
@@ -91,6 +93,7 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
         $form_cb_referrer = (!empty($_POST['form_cb_referrer'])) ? true : false;
         $form_cb_idays    = (!empty($_POST['form_cb_idays']))    ? true : false;
         $form_cb_err      = (!empty($_POST['form_cb_err']))      ? true : false;
+        $form_cb_group_number      = (!empty($_POST['form_cb_group_number']))      ? true : false;
     }
 } else {
     $form_cb_ssn      = false;
@@ -104,6 +107,7 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
     $form_cb_referrer = false;
     $form_cb_idays    = true;
     $form_cb_err      = false;
+    $form_cb_group_number = false;
 }
 
 $form_age_cols = (int) ($_POST['form_age_cols'] ?? null);
@@ -135,6 +139,10 @@ if ($form_cb_pubpid) {
 }
 
 if ($form_cb_policy) {
+    ++$initial_colspan;
+}
+
+if ($form_cb_group_number) {
     ++$initial_colspan;
 }
 
@@ -170,14 +178,6 @@ $grand_total_paid        = 0;
 $grand_total_agedbal = array();
 for ($c = 0; $c < $form_age_cols; ++$c) {
     $grand_total_agedbal[$c] = 0;
-}
-
-
-function bucks($amount)
-{
-    if ($amount) {
-        return oeFormatMoney($amount); // was printf("%.2f", $amount);
-    }
 }
 
 function endPatient($ptrow)
@@ -519,6 +519,11 @@ if (!empty($_POST['form_csvexport'])) {
                            <label><input type='checkbox' name='form_cb_err'<?php echo ($form_cb_err) ? ' checked' : ''; ?>>
                             <?php echo xlt('Errors') ?></label>
                         </td>
+                        <td>
+                           <label><input type='checkbox' name='form_cb_group_number'<?php echo ($form_cb_group_number) ? ' checked' : ''; ?>>
+                            <?php echo xlt('Group Number') ?></label>
+                        </td>
+
                     </tr>
                 </table>
             </td>
@@ -951,6 +956,14 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
             "ORDER BY date DESC LIMIT 1", array($patient_id, $instype, $svcdate));
             $row['policy'] = $insrow['policy_number'] ?? '';
         }
+        if ($form_cb_group_number) {
+            $instype = ($insposition == 2) ? 'secondary' : (($insposition == 3) ? 'tertiary' : 'primary');
+            $insrow = sqlQuery("SELECT group_number FROM insurance_data WHERE " .
+            "pid = ? AND type = ? AND (date <= ? OR date IS NULL) " .
+            "ORDER BY date DESC LIMIT 1", array($patient_id, $instype, $svcdate));
+            $row['groupnumber'] = $insrow['group_number'];
+        }
+
 
         $ptname = $erow['lname'] . ", " . $erow['fname'];
         if ($erow['mname']) {
@@ -989,7 +1002,9 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
             if ($form_cb_policy) {
                 echo csvEscape(xl('Policy')) . ',';
             }
-
+            if ($form_cb_group_number) {
+                echo csvEscape(xl('Group Number')) . ',';
+            }
             if ($form_cb_phone) {
                 echo csvEscape(xl('Phone')) . ',';
             }
@@ -1042,6 +1057,9 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
         <?php if ($form_cb_policy) { ?>
     <th>&nbsp;<?php echo xlt('Policy')?></th>
     <?php } ?>
+        <?php if ($form_cb_group_number) { ?>
+    <th>&nbsp;<?php echo xlt('Group Number')?></th>
+    <?php } ?>
         <?php if ($form_cb_phone) { ?>
     <th>&nbsp;<?php echo xlt('Phone')?></th>
     <?php } ?>
@@ -1064,9 +1082,9 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
     <th>&nbsp;<?php echo xlt('Act Date')?></th>
     <?php } ?>
     <?php } ?>
-    <th align="right"><?php echo xlt('Charge') ?>&nbsp;</th>
-    <th align="right"><?php echo xlt('Adjust') ?>&nbsp;</th>
-    <th align="right"><?php echo xlt('Paid') ?>&nbsp;</th>
+        <th align="right"><?php echo xlt('Charge') ?>&nbsp;</th>
+        <th align="right"><?php echo xlt('Adjust') ?>&nbsp;</th>
+        <th align="right"><?php echo xlt('Paid') ?>&nbsp;</th>
         <?php
     // Generate aging headers if appropriate, else balance header.
         if ($form_age_cols) {
@@ -1187,6 +1205,9 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
                 if ($form_cb_policy) {
                     echo "  <td class='detail'>&nbsp;" . text($row['policy']) . "</td>\n";
                 }
+                if ($form_cb_group_number) {
+                    echo "  <td class='detail'>&nbsp;" . text($row['groupnumber']) . "</td>\n";
+                }
 
                 if ($form_cb_phone) {
                     echo "  <td class='detail'>&nbsp;" . text($row['phone']) . "</td>\n";
@@ -1228,27 +1249,27 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
   </td>
 <?php } // end $form_cb_adate ?>
   <td class="detail" align="left">
-            <?php echo text(bucks($row['charges'])) ?>&nbsp;
+            <?php echo text(FormatMoney::getBucks($row['charges'])) ?>&nbsp;
   </td>
   <td class="detail" align="left">
-            <?php echo text(bucks($row['adjustments'])) ?>&nbsp;
+            <?php echo text(FormatMoney::getBucks($row['adjustments'])) ?>&nbsp;
   </td>
   <td class="detail" align="left">
-            <?php echo text(bucks($row['paid'])) ?>&nbsp;
+            <?php echo text(FormatMoney::getBucks($row['paid'])) ?>&nbsp;
   </td>
             <?php
             if ($form_age_cols) {
                 for ($c = 0; $c < $form_age_cols; ++$c) {
                     echo "  <td class='detail' align='left'>";
                     if ($c == $agecolno) {
-                        echo text(bucks($balance));
+                        echo text(FormatMoney::getBucks($balance));
                     }
 
                     echo "&nbsp;</td>\n";
                 }
             } else { // end $form_age_cols
                 ?>
-<td class="detail" align="left"><?php echo text(bucks($balance)); ?>&nbsp;</td>
+<td class="detail" align="left"><?php echo text(FormatMoney::getBucks($balance)); ?>&nbsp;</td>
                 <?php
             } // end else
             ?>
@@ -1312,6 +1333,9 @@ if (!empty($_POST['form_refresh']) || !empty($_POST['form_export']) || !empty($_
 
                 if ($form_cb_policy) {
                     echo csvEscape($row['policy'])                       . ',';
+                }
+                if ($form_cb_group_number) {
+                    echo csvEscape($row['groupnumber'])                 . ',';
                 }
 
                 if ($form_cb_phone) {

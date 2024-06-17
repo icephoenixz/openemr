@@ -94,7 +94,7 @@ class UtilsService
             if (class_exists($resourceClassCheck)) {
                 $parsed_url['resource'] = $resource;
                 $parsed_url['uuid'] = $uuid;
-            } else if (class_exists($idClassCheck)) {
+            } elseif (class_exists($idClassCheck)) {
                 $parsed_url['resource'] = $uuid; // root level resource at the end
             }
         }
@@ -158,6 +158,17 @@ class UtilsService
         $outerExtension = new FHIRExtension();
         $outerExtension->addExtension($extension);
         return $outerExtension;
+    }
+
+    public static function getExtensionsByUrl($url, $object)
+    {
+        if (method_exists($object, 'getExtension')) {
+            $extensions = $object->getExtension();
+            return array_filter($extensions, function ($extension) use ($url) {
+                return $extension->getUrl() == $url;
+            });
+        }
+        return [];
     }
 
     public static function createContactPoint($value, $system, $use): FHIRContactPoint

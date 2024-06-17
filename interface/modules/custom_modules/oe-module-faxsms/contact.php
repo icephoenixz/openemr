@@ -24,16 +24,22 @@ if (!$clientApp->verifyAcl()) {
     die("<h3>" . xlt("Not Authorised!") . "</h3>");
 }
 $logged_in = $clientApp->authenticate();
-$isEmail = $clientApp->getRequest('isEmail', 0);
-$isSMS = $clientApp->getRequest('isSMS', 0);
+$isSMS = $clientApp->getRequest('isSMS', false);
+$isEmail = $clientApp->getRequest('isEmail', false);
 $isForward = $isFax = 0;
 $isForward = ($clientApp->getRequest('mode', '') == 'forward') ? 1 : 0;
 $isFax = ($serviceType == 'fax') ? 1 : 0;
+
 $isSMTP = !empty($GLOBALS['SMTP_PASS'] ?? null) && !empty($GLOBALS["SMTP_USER"] ?? null);
+
+$isOnetime = $clientApp->getRequest('isOnetime', false);
+$service = $clientApp::getServiceType();
+
 $default_message = '';
 $interface_pid = null;
 $file_mime = '';
 $recipient_phone = '';
+$file_name = '';
 if (empty($isSMS)) {
 // fax contact form
     $interface_pid = $clientApp->getRequest('pid');
@@ -52,14 +58,8 @@ if (empty($isSMS)) {
     $portal_url = $GLOBALS['portal_onsite_two_address'];
     $details = json_decode($clientApp->getRequest('details', ''), true);
     $recipient_phone = $clientApp->getRequest('recipient', $details['phone'] ?? '');
-// TODO need flag for message origin maybe later
-// $default_message = xlt("The following document") . ": " . text($doc_name) . " " . xlt("is available to be completed at") . " " . text($portal_url);
     $pid = $interface_pid;
 }
-$isOnetime = $clientApp->getRequest('isOnetime', false);
-$isEmail = $clientApp->getRequest('isEmail', false);
-
-$service = $clientApp::getServiceType();
 
 ?>
 <!DOCTYPE html>
@@ -81,8 +81,6 @@ $service = $clientApp::getServiceType();
                     setpatient(pid);
                 }
                 $(".smsExclude").addClass("d-none");
-            } else {
-                //$(".faxExclude").addClass("d-none");
             }
             if (isForward) {
                 $(".forwardExclude").addClass("d-none");
@@ -98,68 +96,77 @@ $service = $clientApp::getServiceType();
                 }
             }
             // when the form is submitted
-            $('#contact-form').on('submit', function (e) {
-                if (!e.isDefaultPrevented()) {
-                    let wait = '<div class="text-center wait"><i class="fa fa-cog fa-spin fa-2x"></i></div>';
-                    let url = 'sendFax?type=fax';
-                    if (isSms) {
-                        url = 'sendSMS?type=sms';
-                    }
-                    if (isForward) {
-                        url = 'forwardFax?type=fax';
-                    }
-                    if (isEmail) {
-                        url = 'sendEmail?type=email';
-                    }
-                    if (isOnetime) {
-                        url = "./library/api_onetime.php?";
-                        if (isSms) {
-                            url += 'sendOneTime&type=sms'
-                        } else {
-                            url += 'sendOneTime&type=email';
-                        }
-                    }
+            $(document).ready(function() {
+                // Ensuring event handlers are set after the DOM is fully loaded
+                $('#contact-form').on('submit', function(e) {
+                    e.preventDefault(); // Prevent the default form submit
+
+                    const wait = '<div class="text-center wait"><i class="fa fa-cog fa-spin fa-2x"></i></div>';
                     $('#contact-form').find('.messages').html(wait);
-                    // POST values in the background the script URL
+
+                    const url = buildUrl();
+                    const formData = $(this).serialize();
+
                     $.ajax({
                         type: "POST",
                         url: url,
-                        data: $(this).serialize(),
-                        success: function (data) {
-                            try {
-                                let t_data = JSON.parse(data);
-                                data = t_data;
-                            } catch (e) {
-                            }
-                            let err = (data.search(/Exception/) !== -1 ? 1 : 0);
-                            if (!err) {
-                                err = (data.search(/Error:/) !== -1) ? 1 : 0;
-                            }
-                            // Type of the message: success or danger. Apply it to the alert.
-                            let messageAlert = 'alert-' + (err !== 0 ? 'danger' : 'success');
-                            let messageText = data;
-
-                            // let's compose alert box HTML
-                            let alertBox = '<div class="alert ' + messageAlert + ' alert-dismissable">' +
-                                '<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>' + messageText + '</div>';
-
-                            // If we have messageAlert and messageText
-                            if (messageAlert && messageText) {
-                                // inject the alert to messages div in our form
-                                $('#contact-form').find('.messages').html(alertBox);
-                                setTimeout(function () {
-                                    if (!err) {
-                                        // close dialog as we have success.
-                                        dlgclose();
-                                    }
-                                    // if error let user close dialog for time to read error message.
-                                }, 4000);
-                            }
+                        data: formData,
+                        success: handleResponse,
+                        error: function() {
+                            showErrorMessage('An unexpected error occurred and your request could not be completed.');
                         }
                     });
-                    return false;
+                });
+
+                function buildUrl() {
+                    // Simplify logic by directly mapping conditions to URLs
+                    if (isOnetime) {
+                        const type = isSms ? 'sms' : 'email';
+                        return `./library/api_onetime.php?sendOneTime&type=${encodeURIComponent(type)}`;
+                    }
+
+                    if (isSms) {
+                        return 'sendSMS?type=sms';
+                    } else if (isForward) {
+                        return 'forwardFax?type=fax';
+                    } else if (isEmail) {
+                        return 'sendEmail?type=email';
+                    } else {
+                        return 'sendFax?type=fax';
+                    }
                 }
-            })
+
+                function handleResponse(data) {
+                    let jsonData;
+                    try {
+                        jsonData = JSON.parse(data);
+                    } catch (e) {
+                        jsonData = data; // Use data as is if it can't be parsed as JSON
+                    }
+
+                    const isError = /Exception|Error:/.test(jsonData);
+                    const messageType = isError ? 'danger' : 'success';
+                    const messageText = jsonData;
+                    const alertBox = `<div class="alert alert-${messageType} alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                            ${messageText}
+                          </div>`;
+
+                    $('#contact-form').find('.messages').html(alertBox);
+                    if (!isError) {
+                        setTimeout(() => { dlgclose(); }, 4000); // Auto-close dialog on success
+                    }
+                }
+
+                function showErrorMessage(message) {
+                    const alertBox = `<div class="alert alert-danger alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                            ${message}
+                          </div>`;
+                    $('#contact-form').find('.messages').html(alertBox);
+                }
+            });
+
         });
 
         function sel_patient() {
@@ -228,15 +235,15 @@ $service = $clientApp::getServiceType();
     <div class="container-fluid">
         <form class="form" id="contact-form" method="post" action="contact.php" role="form">
             <input type="hidden" name="csrf_token_form" id="csrf_token_form" value="<?php echo attr(CsrfUtils::collectCsrfToken('contact-form')); ?>" />
-            <input type="hidden" id="form_file" name="file" value='<?php echo attr($the_file); ?>'>
-            <input type="hidden" id="form_docid" name="docid" value='<?php echo attr($the_docid); ?>'>
-            <input type="hidden" id="form_isContent" name="isContent" value='<?php echo attr($isContent); ?>'>
-            <input type="hidden" id="form_isDocuments" name="isDocuments" value='<?php echo attr($isDoc); ?>'>
-            <input type="hidden" id="form_isQueue" name="isQueue" value='<?php echo attr($isQueue); ?>'>
-            <input type="hidden" id="form_isSMS" name="isSMS" value='<?php echo attr($isSMS); ?>'>
-            <input type="hidden" id="form_mime" name="mime" value='<?php echo attr($file_mime); ?>'>
-            <input type="hidden" id="form_file" name="templateName" value='<?php echo attr($template_name); ?>'>
-            <input type="hidden" id="form_details" name="details" value='<?php echo attr_js($details); ?>'>
+            <input type="hidden" id="form_file" name="file" value='<?php echo attr($the_file ?? ''); ?>'>
+            <input type="hidden" id="form_docid" name="docid" value='<?php echo attr($the_docid ?? ''); ?>'>
+            <input type="hidden" id="form_isContent" name="isContent" value='<?php echo attr($isContent ?? ''); ?>'>
+            <input type="hidden" id="form_isDocuments" name="isDocuments" value='<?php echo attr($isDoc ?? ''); ?>'>
+            <input type="hidden" id="form_isQueue" name="isQueue" value='<?php echo attr($isQueue ?? ''); ?>'>
+            <input type="hidden" id="form_isSMS" name="isSMS" value='<?php echo attr($isSMS ?? ''); ?>'>
+            <input type="hidden" id="form_mime" name="mime" value='<?php echo attr($file_mime ?? ''); ?>'>
+            <input type="hidden" id="form_file" name="templateName" value='<?php echo attr($template_name ?? ''); ?>'>
+            <input type="hidden" id="form_details" name="details" value='<?php echo attr_js($details ?? ''); ?>'>
             <div class="messages"></div>
             <div class="row">
                 <div class="col-md-12">
@@ -246,7 +253,7 @@ $service = $clientApp::getServiceType();
                             placeholder="<?php echo xla('If Applicable for charting.') ?>"
                             value="<?php echo attr($interface_pid ?? 0) ?>" />
                     </div>
-                    <div class="form-group show-detail smsExclude faxExclude">
+                    <div class="form-group show-detail">
                         <label for="form_name"><?php echo xlt('Name') ?></label>
                         <input id="form_name" type="text" name="name" class="form-control"
                             placeholder="<?php echo xla('Not Required') ?>"
@@ -277,11 +284,11 @@ $service = $clientApp::getServiceType();
                                 value="" <?php echo(!$isForward ? 'required' : ''); ?> />
                         </div>
                         <?php if ($service == "1" || !empty($isSMS) || $isForward || $isEmail) { ?>
-                            <div class="form-group">
-                                <label for="form_message"><?php echo xlt('Message') ?></label>
-                                <textarea id="form_message" name="comments" class="form-control" placeholder="
+                        <div class="form-group">
+                            <label for="form_message"><?php echo xlt('Message') ?></label>
+                            <textarea id="form_message" name="comments" class="form-control" placeholder="
                             <?php echo xla('Add a note to recipient.'); ?>" rows="6"><?php echo $default_message; ?></textarea>
-                            </div>
+                        </div>
                         <?php } ?>
                         <div>
                             <span class="text-center forwardExclude smsExclude"><strong><?php echo xlt('Sending File') . ': ' ?></strong><?php echo text($file_name) ?></span>
