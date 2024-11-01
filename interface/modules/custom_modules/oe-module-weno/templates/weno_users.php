@@ -16,6 +16,7 @@ use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Twig\TwigContainer;
 use OpenEMR\Core\Header;
+use OpenEMR\Modules\WenoModule\Services\WenoLogService;
 
 
 if (!AclMain::aclCheckCore('admin', 'super')) {
@@ -29,17 +30,31 @@ if ($_POST) {
     }
 }
 
+$wenoLog = new WenoLogService();
 
-$fetch = sqlStatement("SELECT id,username,lname,fname,weno_prov_id,facility,facility_id FROM `users` WHERE active = 1 and authorized = 1");
+$fetch = sqlStatement("SELECT id,username,lname,fname,weno_prov_id,facility,facility_id FROM `users` WHERE active = 1 AND `username` > ''");
 while ($row = sqlFetchArray($fetch)) {
     $usersData[] = $row;
+}
+
+$defaultUserFacility = sqlQuery("SELECT id,username,lname,fname,weno_prov_id,facility,facility_id FROM `users` WHERE active = 1 AND `username` > '' and id = ?", array($_SESSION['authUserID'] ?? 0));
+$list = sqlStatement("SELECT id, name, street, city, weno_id FROM facility WHERE inactive != 1 AND weno_id IS NOT NULL ORDER BY name");
+$facilities = [];
+while ($row = sqlFetchArray($list)) {
+    $facilities[] = $row;
 }
 
 if (($_POST['save'] ?? false) == 'true') {
     foreach ($_POST['weno_provider_id'] as $id => $weno_prov_id) {
         sqlStatement("UPDATE `users` SET weno_prov_id = ? WHERE id = ?", [$weno_prov_id, $id]);
+        sqlQuery(
+            "INSERT INTO `user_settings` (`setting_label`,`setting_value`, `setting_user`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `setting_value` = ?, `setting_user` = ?",
+            array('global:weno_provider_uid', $weno_prov_id, $id, $weno_prov_id, $id)
+        );
     }
 
+    $posted = json_encode($_POST);
+    $wenoLog->insertWenoLog("Module setup modified.", "Setup Users modified", $posted);
     unset($_POST['save']);
     Header("Location: " . $GLOBALS['webroot'] . "/interface/modules/custom_modules/oe-module-weno/templates/weno_users.php");
     exit;
@@ -62,7 +77,7 @@ if (($_POST['save'] ?? false) == 'true') {
             persistChange.forEach(persist => {
                 persist.addEventListener('change', () => {
                     top.restoreSession();
-                    syncAlertMsg(successMsg, 1000, 'success').then(() => {
+                    syncAlertMsg(successMsg, 750, 'success').then(() => {
                         isPersistEvent = true;
                         $("#form_save_users").click();
                     });
@@ -84,7 +99,7 @@ if (($_POST['save'] ?? false) == 'true') {
                     <th><?php echo xlt("Last"); ?></th>
                     <th><?php echo xlt("First"); ?></th>
                     <th><?php echo xlt("Weno User"); ?></th>
-                    <th><?php echo xlt("Facility"); ?></th>
+                    <th><?php echo xlt("Assigned Default Facility"); ?></th>
                     <th><?php echo xlt("Edit"); ?></th>
                 </tr>
                 </thead>

@@ -33,7 +33,7 @@ CREATE TABLE `weno_pharmacy` (
      `State_Wide_Mail_Order` varchar(15) NOT NULL,
      `Mail_Order_US_State_Serviced` varchar(255) DEFAULT NULL,
      `Mail_Order_ US_Territories_Serviced` varchar(255) DEFAULT NULL,
-     `On_WENO` tinytext DEFAULT NULL,
+     `On_WENO` varchar(10) DEFAULT NULL,
      `24HR` varchar(3) DEFAULT NULL,
      PRIMARY KEY (`id`),
      UNIQUE KEY `ncpdp` (`NCPDP_safe`)
@@ -59,6 +59,7 @@ CREATE TABLE `weno_download_log` (
     `value`      VARCHAR(63)  NOT NULL,
     `status`     VARCHAR(255) NOT NULL,
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `data_in_context` TEXT,
     PRIMARY KEY (`id`),
     KEY `value` (`value`)
 ) ENGINE = InnoDB;
@@ -95,4 +96,8 @@ ALTER TABLE `weno_assigned_pharmacy` ADD `is_history` TINYINT(1) NOT NULL DEFAUL
 
 #IfMissingColumn weno_assigned_pharmacy search_persist
 ALTER TABLE `weno_assigned_pharmacy` ADD `search_persist` TINYTEXT;
+#EndIf
+
+#IfMissingColumn weno_download_log data_in_context
+ALTER TABLE `weno_download_log` ADD `data_in_context` TEXT;
 #EndIf

@@ -243,7 +243,7 @@ class WenoValidate extends ModuleService
      * @param $resetOnInvalid
      * @return bool
      */
-    public function validateAdminCredentials($resetOnInvalid = false, $where = "prescription"): bool
+    public function validateAdminCredentials($resetOnInvalid = false, $where = "Sync Report"): bool
     {
         $newKey = false;
         $isKeyValid = $this->verifyEncryptionKey();
@@ -255,7 +255,6 @@ class WenoValidate extends ModuleService
             if (!empty($newKey)) {
                 // save new admin production key.
                 $this->setNewEncryptionKey($newKey);
-                error_log(errorLogEscape("$where Encryption Verify returned Invalid Key. Attempted to reset key."));
                 $wenoLog = new WenoLogService();
                 $wenoLog->insertWenoLog(text("$where"), "reset_encryption_key");
             }
